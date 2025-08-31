@@ -1,36 +1,46 @@
 import { useState, useEffect } from "react";
 import { Input, Pagination, Alert, ConfigProvider, theme } from "antd";
+import { useNavigate } from "react-router-dom";
 
 const { Search } = Input;
 
 // --- Sub-component for displaying a single asset ---
-const AssetCard = ({ asset }) => (
-  <div className="bg-gray-800 border border-gray-700 rounded-2xl overflow-hidden group transform hover:-translate-y-2 transition-transform duration-300 ease-in-out">
-    <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden">
-      <img
-        src={asset.image}
-        alt={asset.name}
-        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-      />
-    </div>
-    <div className="p-5">
-      <h3 className="text-xl font-bold text-white truncate">{asset.name}</h3>
-      <p className="text-gray-400 mt-2 h-12 overflow-hidden text-ellipsis">
-        {asset.description}
-      </p>
-      <div className="mt-4 pt-4 border-t border-gray-700">
-        <p className="text-xs text-gray-500">Owner</p>
-        <p className="text-sm font-mono text-indigo-400 truncate">
-          {asset.owner}
+const AssetCard = ({ asset }) => {
+  const navigate = useNavigate();
+
+  return (
+    <div
+      onClick={() =>
+        navigate(`/assets/${asset.ipfsHash}`, { state: { asset } })
+      }
+      className="cursor-pointer bg-gray-800 border border-gray-700 rounded-2xl overflow-hidden group transform hover:-translate-y-2 transition-transform duration-300 ease-in-out"
+    >
+      <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden">
+        <img
+          src={asset.image}
+          alt={asset.name}
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+        />
+      </div>
+      <div className="p-5">
+        <h3 className="text-xl font-bold text-white truncate">{asset.name}</h3>
+        <p className="text-gray-400 mt-2 h-12 overflow-hidden text-ellipsis">
+          {asset.description}
         </p>
-        <p className="text-xs text-gray-500">Price</p>
-        <p className="text-sm font-mono text-indigo-400 truncate">
-          {asset.price} USD
-        </p>
+        <div className="mt-4 pt-4 border-t border-gray-700">
+          <p className="text-xs text-gray-500">Owner</p>
+          <p className="text-sm font-mono text-indigo-400 truncate">
+            {asset.owner}
+          </p>
+          <p className="text-xs text-gray-500">Price</p>
+          <p className="text-sm font-mono text-indigo-400 truncate">
+            {asset.price} USD
+          </p>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // --- Loading Skeleton Component ---
 const SkeletonCard = () => (

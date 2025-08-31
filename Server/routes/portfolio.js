@@ -9,15 +9,14 @@ const nftContractABI = require("../abi/MasterNFT.json").abi;
 const router = express.Router();
 
 // --- CONFIGURATION ---
-const provider = new JsonRpcProvider(
-  process.env.AVALANCHE_FUJI_RPC_URL
-);
+const provider = new JsonRpcProvider(process.env.AVALANCHE_FUJI_RPC_URL);
 const nftContract = new ethers.Contract(
   process.env.NFT_CONTRACT_ADDRESS,
   nftContractABI,
   provider
 );
-const ipfsGateway = "https://gateway.pinata.cloud/ipfs/";
+const ipfsGateway =
+  "https://beige-impressive-caterpillar-396.mypinata.cloud/ipfs/";
 
 // --- HELPER FUNCTION ---
 const fetchMetadata = async (tokenURI) => {

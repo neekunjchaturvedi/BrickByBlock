@@ -12,6 +12,7 @@ import {
 } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import { ethers } from "ethers";
+import { useNavigate } from "react-router-dom";
 
 // --- Authentication Context (Placeholder) ---
 const AuthContext = createContext(null);
@@ -75,6 +76,7 @@ const AddAsset = () => {
       formData.append("name", values.name);
       formData.append("description", values.description);
       formData.append("price", values.price);
+      formData.append("owner", currentAccount);
       formData.append("file", fileList[0]);
 
       const authToken = localStorage.getItem("authToken");
@@ -130,6 +132,7 @@ const AddAsset = () => {
     listType: "picture",
     maxCount: 1,
   };
+  const navigate = useNavigate();
 
   return (
     <ConfigProvider
@@ -235,9 +238,18 @@ const AddAsset = () => {
         <Modal
           title="Transaction Receipt"
           open={isModalVisible}
-          onCancel={() => setIsModalVisible(false)}
+          onCancel={() => {
+            setIsModalVisible(false);
+            navigate("/marketplace"); // ✅ redirect on modal close
+          }}
           footer={[
-            <Button key="close" onClick={() => setIsModalVisible(false)}>
+            <Button
+              key="close"
+              onClick={() => {
+                setIsModalVisible(false);
+                navigate("/marketplace"); // ✅ redirect on button click
+              }}
+            >
               Close
             </Button>,
           ]}
@@ -251,7 +263,7 @@ const AddAsset = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  {receipt.transactionHash}
+                  {receipt.hash}
                 </a>
               </p>
               <p>

@@ -6,6 +6,7 @@ import { AuthProvider } from "./contexts/auth";
 import Navbar from "./components/home/navbar";
 import MarketPlace from "./pages/marketplace/home";
 import AddAsset from "./pages/ListAssets/Addasset";
+import AssetDetails from "./pages/marketplace/assetdetails";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/marketplace" element={<MarketPlace />} />
         <Route path="/addasset" element={<AddAsset />} />
+        <Route path="/assets/:id" element={<AssetDetails />} />
       </Routes>
     </AuthProvider>
   );
