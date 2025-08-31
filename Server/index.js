@@ -14,11 +14,13 @@ app.use(express.json());
 // --- Routes ---
 const apiRoutes = require("./routes/api");
 const authRoutes = require("./routes/auth");
-app.use("/api", apiRoutes); // Use the routes defined in api.js
+const portfolioRoutes = require("./routes/portfolio");
+app.use("/api/assets", apiRoutes); // Use the routes defined in api.js
 app.use("/api/auth", authRoutes);
+app.use("/api/portfolio", portfolioRoutes);
 
 // --- Server Startup ---
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`✅ BrickByBlock Backend is running on port ${PORT}`);
 });

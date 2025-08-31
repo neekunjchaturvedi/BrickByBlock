@@ -54,10 +54,7 @@ router.post("/verify", async (req, res) => {
     const originalMessage = `Welcome to BrickByBlock!\n\nPlease sign this message to authenticate.\n\nNonce: ${originalNonce}`;
 
     // 2. Use ethers to verify the signature
-    const recoveredAddress = ethers.utils.verifyMessage(
-      originalMessage,
-      signature
-    );
+    const recoveredAddress = ethers.verifyMessage(originalMessage, signature);
 
     // 3. Check if the recovered address matches the user's address
     if (recoveredAddress.toLowerCase() === lowerCaseAddress) {
