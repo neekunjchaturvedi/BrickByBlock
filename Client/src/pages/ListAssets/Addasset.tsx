@@ -8,22 +8,16 @@ import {
   Spin,
   ConfigProvider,
   theme,
+  Modal, // ✅ import Modal
 } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
-// To fix the compilation error, you must install the ethers.js library.
-// Open your terminal in your React project folder and run:
-// npm install ethers
 import { ethers } from "ethers";
 
 // --- Authentication Context (Placeholder) ---
-// This context is included here to make the component self-contained and fix the import error.
-// You should replace the import in this file with the correct path to your actual AuthContext file.
 const AuthContext = createContext(null);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    // This provides mock data so the component can render without your full app context.
-    // For the real functionality to work, your App must be wrapped in your actual AuthProvider.
     console.warn(
       "useAuth hook is used outside of its Provider. Using mock data."
     );
@@ -39,9 +33,29 @@ const AddAsset = () => {
   const [loadingMessage, setLoadingMessage] = useState("");
   const [fileList, setFileList] = useState([]);
 
-  const { currentAccount } = useAuth();
+  // ✅ state for modal
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [receipt, setReceipt] = useState<any>(null);
 
+  const { currentAccount } = useAuth();
   const apiBaseUrl = import.meta.env.VITE_PORT;
+
+  // --- Helper to send unsignedTx to wallet ---
+  const sendMintTx = async (unsignedTx) => {
+    if (!window.ethereum) throw new Error("MetaMask not found");
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+
+    const txResponse = await signer.sendTransaction(unsignedTx);
+    console.log("Transaction hash:", txResponse.hash);
+
+    setLoadingMessage("Waiting for transaction confirmation...");
+    const receipt = await txResponse.wait();
+    console.log("Transaction confirmed:", receipt);
+
+    return receipt;
+  };
 
   const handleFinish = async (values) => {
     if (!currentAccount) {
@@ -60,7 +74,7 @@ const AddAsset = () => {
       const formData = new FormData();
       formData.append("name", values.name);
       formData.append("description", values.description);
-      formData.append("file", fileList[0].originFileObj);
+      formData.append("file", fileList[0]);
 
       const authToken = localStorage.getItem("authToken");
       if (!authToken) {
@@ -71,9 +85,7 @@ const AddAsset = () => {
 
       const response = await fetch(`${apiBaseUrl}/assets/mint-request`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
+        headers: { Authorization: `Bearer ${authToken}` },
         body: formData,
       });
 
@@ -86,15 +98,14 @@ const AddAsset = () => {
       }
 
       const { unsignedTx } = await response.json();
+      console.log("Unsigned Tx from server:", unsignedTx);
 
       setLoadingMessage("Please approve the transaction in your wallet...");
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
+      const txReceipt = await sendMintTx(unsignedTx);
 
-      const txResponse = await signer.sendTransaction(unsignedTx);
-
-      setLoadingMessage("Waiting for transaction confirmation...");
-      await txResponse.wait();
+      // ✅ set receipt and show modal
+      setReceipt(txReceipt);
+      setIsModalVisible(true);
 
       message.success("Asset minted successfully!");
     } catch (error) {
@@ -109,12 +120,10 @@ const AddAsset = () => {
   };
 
   const uploadProps = {
-    onRemove: () => {
-      setFileList([]);
-    },
+    onRemove: () => setFileList([]),
     beforeUpload: (file) => {
       setFileList([file]);
-      return false; // Prevent antd from automatically uploading
+      return false;
     },
     fileList,
     listType: "picture",
@@ -204,6 +213,42 @@ const AddAsset = () => {
             </Spin>
           </main>
         </div>
+
+        {/* ✅ Receipt Modal */}
+        <Modal
+          title="Transaction Receipt"
+          open={isModalVisible}
+          onCancel={() => setIsModalVisible(false)}
+          footer={[
+            <Button key="close" onClick={() => setIsModalVisible(false)}>
+              Close
+            </Button>,
+          ]}
+        >
+          {receipt ? (
+            <div>
+              <p>
+                <strong>Tx Hash:</strong>{" "}
+                <a
+                  href={`https://sepolia.etherscan.io/tx/${receipt.transactionHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {receipt.transactionHash}
+                </a>
+              </p>
+              <p>
+                <strong>Block:</strong> {receipt.blockNumber}
+              </p>
+              <p>
+                <strong>Status:</strong>{" "}
+                {receipt.status === 1 ? "✅ Success" : "❌ Failed"}
+              </p>
+            </div>
+          ) : (
+            <p>No receipt available.</p>
+          )}
+        </Modal>
       </div>
     </ConfigProvider>
   );

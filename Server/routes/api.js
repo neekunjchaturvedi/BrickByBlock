@@ -1,5 +1,5 @@
-// routes/api.js
-
+const dotenv = require("dotenv");
+dotenv.config();
 const express = require("express");
 const multer = require("multer");
 const { ethers, JsonRpcProvider } = require("ethers");
@@ -7,17 +7,21 @@ const pinataSDK = require("@pinata/sdk");
 const fetch = require("node-fetch");
 const authMiddleware = require("../middleware/authMiddleware");
 
-const nftContractABI = require("../abi/MasterNFT.json").abi;
 const marketplaceContractABI = require("../abi/MarketPlace.json").abi;
 
 const router = express.Router();
-// ... (Your full configuration code for Pinata, Ethers, Contracts etc. remains here)
 const upload = multer({ storage: multer.memoryStorage() });
-const pinata = new pinataSDK({ pinataJWTKey: process.env.PINATA_JWT });
+
+const pinata = new pinataSDK(
+  process.env.PINATA_API_KEY,
+  process.env.PINATA_API_SECRET
+);
+
 const provider = new JsonRpcProvider(process.env.AVALANCHE_FUJI_RPC_URL);
+const nftArtifact = require("../abi/MasterNFT.json").abi;
 const nftContract = new ethers.Contract(
   process.env.NFT_CONTRACT_ADDRESS,
-  nftContractABI,
+  nftArtifact,
   provider
 );
 const marketplaceContract = new ethers.Contract(
@@ -25,7 +29,18 @@ const marketplaceContract = new ethers.Contract(
   marketplaceContractABI,
   provider
 );
-const ipfsGateway = "https://gateway.pinata.cloud/ipfs/";
+
+const { Readable } = require("stream");
+
+function bufferToStream(buffer) {
+  const readable = new Readable();
+  readable.push(buffer);
+  readable.push(null);
+  return readable;
+}
+
+const ipfsGateway =
+  "https://beige-impressive-caterpillar-396.mypinata.cloud/ipfs/";
 
 const fetchMetadata = async (tokenURI) => {
   const metadataUrl = tokenURI.replace("ipfs://", ipfsGateway);
@@ -37,49 +52,59 @@ const fetchMetadata = async (tokenURI) => {
 
 // --- PUBLIC ASSET ROUTES ---
 router.get("/", async (req, res) => {
-  /* ... Get All Assets logic ... */
   try {
-    const latestBlock = await provider.getBlockNumber();
-    const eventFilter = nftContract.filters.AssetMinted();
-    const chunkSize = 2048; // The max block range allowed by the public RPC
-    let allLogs = [];
+    // Get all pinned files from Pinata
+    const pinnedFiles = await pinata.pinList({
+      status: "pinned",
+      pageLimit: 1000,
+    });
 
-    console.log(`Scanning for events up to block ${latestBlock}...`);
+    // Filter for metadata files (assuming they have "Metadata_" prefix)
+    const metadataFiles = pinnedFiles.rows.filter(
+      (file) =>
+        file.metadata &&
+        file.metadata.name &&
+        file.metadata.name.startsWith("Metadata_")
+    );
 
-    // Loop through blocks in chunks to avoid overwhelming the RPC node
-    for (let i = 0; i <= latestBlock; i += chunkSize) {
-      const fromBlock = i;
-      const toBlock = Math.min(i + chunkSize - 1, latestBlock);
+    const assets = [];
 
-      const logs = await nftContract.queryFilter(
-        eventFilter,
-        fromBlock,
-        toBlock
-      );
-      allLogs = allLogs.concat(logs);
-    }
-    if (allLogs.length === 0) {
-      return res.status(200).json([]);
-    }
+    // Fetch each metadata file
+    for (const file of metadataFiles) {
+      try {
+        const metadataUrl = `${ipfsGateway}${file.ipfs_pin_hash}`;
+        const response = await fetch(metadataUrl);
+        const metadata = await response.json();
 
-    const assets = await Promise.all(
-      logs.map(async (log) => {
-        const { tokenId, owner, tokenURI } = log.args;
-        const metadata = await fetchMetadata(tokenURI);
-        return {
-          tokenId: tokenId.toString(),
-          owner,
+        // Convert IPFS URLs to gateway URLs
+        if (metadata.image) {
+          metadata.image = metadata.image.replace("ipfs://", ipfsGateway);
+        }
+
+        assets.push({
+          ipfsHash: file.ipfs_pin_hash,
           name: metadata.name,
           description: metadata.description,
           image: metadata.image,
-        };
-      })
-    );
+          pinDate: file.date_pinned,
+          size: file.size,
+        });
+      } catch (error) {
+        console.error(
+          `Error fetching metadata for ${file.ipfs_pin_hash}:`,
+          error
+        );
+      }
+    }
 
-    res.status(200).json(assets.reverse());
-  } catch (error) {
-    console.error("Error fetching assets:", error);
-    res.status(500).json({ error: "Server error while fetching assets." });
+    res.json({
+      success: true,
+      data: assets,
+      totalFound: assets.length,
+    });
+  } catch (err) {
+    console.error("Error fetching assets from IPFS:", err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -140,10 +165,12 @@ router.post(
     }
 
     try {
-      const imageResult = await pinata.pinFileToIPFS(imageFile.stream, {
+      const stream = bufferToStream(imageFile.buffer);
+      const imageResult = await pinata.pinFileToIPFS(stream, {
         pinataMetadata: { name: `Asset_${name}` },
       });
       const imageUrl = `ipfs://${imageResult.IpfsHash}`;
+      console.log(imageUrl);
 
       const metadata = { name, description, image: imageUrl };
       const metadataResult = await pinata.pinJSONToIPFS(metadata, {
@@ -151,7 +178,7 @@ router.post(
       });
       const tokenURI = `ipfs://${metadataResult.IpfsHash}`;
 
-      const unsignedTx = await nftContract.populateTransaction.mintAsset(
+      const unsignedTx = await nftContract.mintAsset.populateTransaction(
         ownerAddress,
         tokenURI
       );

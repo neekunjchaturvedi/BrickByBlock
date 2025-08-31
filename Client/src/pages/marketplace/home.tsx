@@ -69,8 +69,9 @@ export default function Marketplace() {
           throw new Error("Network response was not ok");
         }
         const data = await response.json();
-        setAllAssets(data);
-        setFilteredAssets(data);
+        const assets = Array.isArray(data) ? data : data.data;
+        setAllAssets(assets || []);
+        setFilteredAssets(assets || []);
       } catch (err) {
         setError(
           "Failed to fetch assets. Please make sure the backend server is running."
