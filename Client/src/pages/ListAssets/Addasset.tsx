@@ -74,6 +74,7 @@ const AddAsset = () => {
       const formData = new FormData();
       formData.append("name", values.name);
       formData.append("description", values.description);
+      formData.append("price", values.price);
       formData.append("file", fileList[0]);
 
       const authToken = localStorage.getItem("authToken");
@@ -183,6 +184,22 @@ const AddAsset = () => {
                   <TextArea
                     rows={4}
                     placeholder="Describe your asset in detail..."
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label={<span className="text-white">Price($)</span>}
+                  name="price"
+                  rules={[
+                    {
+                      required: true,
+                      message: "Please provide a price!",
+                    },
+                  ]}
+                >
+                  <TextArea
+                    rows={1}
+                    placeholder="Enter the price of the asset in USD"
                   />
                 </Form.Item>
 

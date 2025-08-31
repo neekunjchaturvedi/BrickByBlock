@@ -88,6 +88,8 @@ router.get("/", async (req, res) => {
           image: metadata.image,
           pinDate: file.date_pinned,
           size: file.size,
+          price: metadata.price || "N/A",
+          owner: metadata.owner || "N/A",
         });
       } catch (error) {
         console.error(
@@ -157,10 +159,10 @@ router.post(
   upload.single("file"),
   async (req, res) => {
     const ownerAddress = req.user.address;
-    const { name, description } = req.body;
+    const { name, description, price, owner } = req.body;
     const imageFile = req.file;
 
-    if (!imageFile || !name || !description) {
+    if (!imageFile || !name || !description || !price) {
       return res.status(400).json({ error: "Missing required fields." });
     }
 
@@ -172,7 +174,7 @@ router.post(
       const imageUrl = `ipfs://${imageResult.IpfsHash}`;
       console.log(imageUrl);
 
-      const metadata = { name, description, image: imageUrl };
+      const metadata = { name, description, image: imageUrl, price, owner };
       const metadataResult = await pinata.pinJSONToIPFS(metadata, {
         pinataMetadata: { name: `Metadata_${name}` },
       });

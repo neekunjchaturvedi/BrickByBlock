@@ -23,6 +23,10 @@ const AssetCard = ({ asset }) => (
         <p className="text-sm font-mono text-indigo-400 truncate">
           {asset.owner}
         </p>
+        <p className="text-xs text-gray-500">Price</p>
+        <p className="text-sm font-mono text-indigo-400 truncate">
+          {asset.price} USD
+        </p>
       </div>
     </div>
   </div>
